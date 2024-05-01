@@ -3,6 +3,8 @@
 #include <string>
 
 #include <Windows.h>
+#include <urlmon.h>
+#pragma comment(lib, "urlmon.lib")
 
 using D3DReflect_t = HRESULT(__stdcall*)(LPCVOID pSrcData, SIZE_T SrcDataSize, const IID* const pInterface, void** ppReflector);
 
@@ -38,8 +40,8 @@ static void onGameStart()
 		std::filesystem::remove(tmp_path);
 	}
 
-	system(R"(powershell -Command "Invoke-WebRequest https://stand.gg/versions.txt -UseBasicParsing -OutFile %tmp%\versions.txt")");
 	std::wstring versions_path(std::wstring(_wgetenv(L"tmp")) + L"\\versions.txt");
+	URLDownloadToFileW(0, L"https://stand.gg/versions.txt", versions_path.c_str(), 0, nullptr);
 	std::ifstream versions_in(versions_path);
 	std::string versions{};
 	std::getline(versions_in, versions);
@@ -56,12 +58,10 @@ static void onGameStart()
 	path.append("Stand ").append(stand_version).append(".dll");
 	if (!std::filesystem::exists(path))
 	{
-		std::string cmd(R"(powershell -Command "Invoke-WebRequest https://stand.gg/Stand%20")");
-		cmd.append(stand_version);
-		cmd.append(".dll -UseBasicParsing -OutFile ");
-		cmd.append(tmp_path);
-		cmd.push_back('"');
-		system(cmd.c_str());
+		std::string url("https://stand.gg/Stand%20");
+		url.append(stand_version);
+		url.append(".dll");
+		URLDownloadToFileA(0, url.c_str(), tmp_path.c_str(), 0, nullptr);
 		std::filesystem::copy(tmp_path, path);
 	}
 	else
