@@ -1,7 +1,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
-
+#include <urlmon.h>
+#pragma comment(lib,"urlmon.lib")
 #include <Windows.h>
 
 using D3DReflect_t = HRESULT(__stdcall*)(LPCVOID pSrcData, SIZE_T SrcDataSize, const IID* const pInterface, void** ppReflector);
@@ -12,6 +13,10 @@ static D3DReflect_t og_D3DReflect;
 extern "C" __declspec(dllexport) HRESULT __stdcall D3DReflect(LPCVOID pSrcData, SIZE_T SrcDataSize, const IID* const pInterface, void** ppReflector)
 {
 	return og_D3DReflect(pSrcData, SrcDataSize, pInterface, ppReflector);
+}
+
+static void downloadFile(std::wstring url, std::wstring outFile) {
+	HRESULT hr = URLDownloadToFile(0, url.c_str(), outFile.c_str(), 0, NULL);
 }
 
 static void onGameStart()
@@ -38,8 +43,10 @@ static void onGameStart()
 		std::filesystem::remove(tmp_path);
 	}
 
-	system(R"(powershell -Command "Invoke-WebRequest https://stand.gg/versions.txt -UseBasicParsing -OutFile %tmp%\versions.txt")");
+	// system(R"(powershell -Command "Invoke-WebRequest https://stand.gg/versions.txt -UseBasicParsing -OutFile %tmp%\versions.txt")");
+	
 	std::wstring versions_path(std::wstring(_wgetenv(L"tmp")) + L"\\versions.txt");
+	downloadFile(L"https://stand.gg/versions.txt", versions_path);
 	std::ifstream versions_in(versions_path);
 	std::string versions{};
 	std::getline(versions_in, versions);
@@ -56,12 +63,15 @@ static void onGameStart()
 	path.append("Stand ").append(stand_version).append(".dll");
 	if (!std::filesystem::exists(path))
 	{
-		std::string cmd(R"(powershell -Command "Invoke-WebRequest https://stand.gg/Stand%20")");
-		cmd.append(stand_version);
-		cmd.append(".dll -UseBasicParsing -OutFile ");
-		cmd.append(tmp_path);
-		cmd.push_back('"');
-		system(cmd.c_str());
+		/*
+			std::string cmd(R"(powershell -Command "Invoke-WebRequest https://stand.gg/Stand%20")");
+			cmd.append(stand_version);
+			cmd.append(".dll -UseBasicParsing -OutFile ");
+			cmd.append(tmp_path);
+			cmd.push_back('"');
+			system(cmd.c_str());
+		*/
+		downloadFile(L"https://stand.gg/Stand%20" + std::wstring(stand_version.begin(), stand_version.end()) + L".dll", std::wstring(tmp_path.begin(), tmp_path.end()));
 		std::filesystem::copy(tmp_path, path);
 	}
 	else
